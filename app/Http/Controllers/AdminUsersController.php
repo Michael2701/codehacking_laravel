@@ -10,7 +10,9 @@ use App\Http\Requests\UsersRequest;
 use App\Http\Requests\UsersEditRequest;
 
 use App\Http\Requests;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Session;
+use Intervention\Image\Facades\Image;
 
 class AdminUsersController extends Controller
 {
@@ -46,6 +48,10 @@ class AdminUsersController extends Controller
      */
     public function store(UsersRequest $request)
     {
+        $constants = Config::get('constants');
+        $h = $constants['HEIGHT'];
+        $w = $constants['WIDTH'];
+
         if(trim($request->password) == '')
         {
             $input = $request->except('password');
@@ -57,17 +63,30 @@ class AdminUsersController extends Controller
         }
 
 
-        if($file = $request->file('photo_id'))
-        {
+        if($file = $request->file('photo_id')) {
             $name = time() . $file->getClientOriginalName();
 
-            $file->move('images', $name);
+            $height = Image::make($file)->height();
+            $width = Image::make($file)->width();
 
-            $photo = Photo::create(['name'=>$name]);
+            if ($height / $h < $width / $w) {
+                $image = Image::make($file->getRealPath())->resize($w, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+            } else {
 
-            $input['photo_id'] = $photo->id;
+                $image = Image::make($file->getRealPath())->resize(null, $h, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+            }
 
+        $image->save('images/'. $name);
+
+        $photo = Photo::create(['name'=>$name]);
+
+        $input['photo_id']  = $photo->id;
         }
+
 
         User::create($input);
 
@@ -110,8 +129,18 @@ class AdminUsersController extends Controller
      */
     public function update(UsersEditRequest $request, $id)
     {
-        $user = User::findOrFail($id);
 
+        $constants = Config::get('constants');
+        $h = $constants['HEIGHT'];
+        $w = $constants['WIDTH'];
+
+        $user = User::findOrFail($id);
+        if($user['photo_id'])
+        {
+            $photo_id = $user['photo_id'];
+            $photo = Photo::findOrFail($photo_id);
+        }
+ //if password -> encrypting, else not
         if(trim($request->password) == '')
         {
             $input = $request->except('password');
@@ -121,24 +150,48 @@ class AdminUsersController extends Controller
             $input = $request->all();
             $input['password'] = bcrypt($request->password);
         }
-
+// if files['image'] ->delete ->update
         if($file = $request->file('photo_id'))
         {
             $name = time() . $file->getClientOriginalName();
 
-            $file->move('images', $name);
+            $height = Image::make($file)->height();
+            $width = Image::make($file)->width();
+
+            if($height/$h < $width/$w)
+            {
+                $image = Image::make($file->getRealPath())->resize($w, null, function($constraint)
+                {
+                    $constraint->aspectRatio();
+                });
+            }
+            else
+            {
+                $image = Image::make($file->getRealPath())->resize(null, $h, function($constraint)
+                {
+                    $constraint->aspectRatio();
+                });
+            }
+
+            $image->save('images/'. $name);
+
+            //$file->move('images', $name);
 
             if($user->photo)
             {
                 unlink(public_path() .  $user->photo->name);
+                $photo->update(['name'=>$name]);
+                $input['photo_id'] = $photo->id;
+            }
+            else
+            {
+                $new_photo = Photo::create(['name'=>$name]);
+                $input['photo_id'] = $new_photo->id;
             }
 
-            $photo = Photo::create(['name'=>$name]);
-
-            $input['photo_id'] = $photo->id;
         }
         Session::flash('message','The user has been updated.');
-        
+
         $user->update($input);
 
         return redirect('/admin/users');
@@ -153,17 +206,19 @@ class AdminUsersController extends Controller
      */
     public function destroy($id)
     {
-       $user = User::findOrFail($id);
+        $user = User::findOrFail($id);
+        $photo = Photo::findOrfail($user->photo_id);
 
-        if($user->photo)
+        if(!empty($user->photo->name))
         {
             unlink(public_path() . $user->photo->name);
+            $photo->delete();
         }
 
         $user->delete();
-        
+
         Session::flash('message','The user has been deleted.');
         
-       return redirect('admin/users');
+        return redirect('admin/users');
     }
 }

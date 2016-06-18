@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Config;
 
 class User extends Authenticatable
 {
@@ -42,4 +43,5 @@ class User extends Authenticatable
        }
         return false;
     }
+
 }
