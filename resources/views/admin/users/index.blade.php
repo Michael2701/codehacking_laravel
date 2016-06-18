@@ -1,7 +1,11 @@
 @extends('layouts/admin')
 
 @section('content')
+
     <h1>Users</h1>
+    @if(session('message'))
+    <p class="alert-info">{{session('message')}}</p>
+    @endif
 
 <table class="table table-striped">
     <thead>
