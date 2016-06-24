@@ -105,7 +105,9 @@ class AdminPostsController extends Controller
      */
     public function edit($id)
     {
-        return view('admin.posts.edit');
+        $post = Auth::user()->posts()->whereId($id)->first();
+        $categories = Category::lists('name','id')->all();
+        return view('admin.posts.edit', compact('post','categories'));
     }
 
     /**
@@ -117,7 +119,72 @@ class AdminPostsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+
+        $constants = Config::get('constants');
+        $h = $constants['HEIGHT'];
+        $w = $constants['WIDTH'];
+
+        $input = $request->all();
+        $post = Auth::user()->posts()->whereId($id)->first();
+
+
+
+
+        if($post['photo_id'])
+        {
+            $photo_id = $post['photo_id'];
+            $photo = Photo::findOrFail($photo_id);
+        }
+
+
+
+
+        // if files['image'] ->delete ->update
+        if($file = $request->file('photo_id'))
+        {
+            $name = time() . $file->getClientOriginalName();
+
+            $height = Image::make($file)->height();
+            $width = Image::make($file)->width();
+
+            if($height/$h < $width/$w)
+            {
+                $image = Image::make($file->getRealPath())->resize($w, null, function($constraint)
+                {
+                    $constraint->aspectRatio();
+                });
+            }
+            else
+            {
+                $image = Image::make($file->getRealPath())->resize(null, $h, function($constraint)
+                {
+                    $constraint->aspectRatio();
+                });
+            }
+
+            $image->save('images/'. $name);
+
+            //$file->move('images', $name);
+
+            if($post->photo)
+            {
+                unlink(public_path() .  $post->photo->name);
+                $photo->update(['name'=>$name]);
+                $input['photo_id'] = $photo->id;
+            }
+            else
+            {
+                $new_photo = Photo::create(['name'=>$name]);
+                $input['photo_id'] = $new_photo->id;
+            }
+
+        }
+
+        $post->update($input);
+
+        Session::flash('message','The post has been updated.');
+
+        return redirect('/admin/posts');
     }
 
     /**
@@ -128,6 +195,19 @@ class AdminPostsController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $post = Auth::user()->posts()->whereId($id)->first();
+        $photo = Photo::findOrfail($post->photo_id);
+
+        if(!empty($post->photo->name))
+        {
+            unlink(public_path() . $post->photo->name);
+            $photo->delete();
+        }
+
+        $post->delete();
+
+        Session::flash('message','The user has been deleted.');
+
+        return redirect('admin/posts');
     }
 }
