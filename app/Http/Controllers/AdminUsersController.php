@@ -64,8 +64,8 @@ class AdminUsersController extends Controller
 
 
         if($file = $request->file('photo_id')) {
+            
             $name = time() . $file->getClientOriginalName();
-
             $height = Image::make($file)->height();
             $width = Image::make($file)->width();
 
