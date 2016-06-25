@@ -20,13 +20,15 @@ elixir(function(mix) {
         'libs/font-awesome.css',
         'libs/metisMenu.css',
         'libs/sb-admin-2.css',
-        'libs/styles.css'
+        'libs/styles.css',
+        'libs/dropzone.min.css'
     ],'./public/css/libs.css')
     .scripts([
         'libs/jquery.js',
         'libs/bootstrap.min.js',
         'libs/metisMenu.js',
         'libs/sb-admin-2.js',
-        'libs/scripts.js'
+        'libs/scripts.js',
+        'libs/dropzone.js'
     ],'./public/js/libs.js')
 });
