@@ -148,7 +148,16 @@
 
 <!-- jQuery -->
 <script src="{{asset('js/libs.js')}}"></script>
+<script>
+    $(document).ready(function(){
 
+        $('.reply-container').hide()
+        $('.reply-button').click(function(){
+
+            $(this).next().next().slideToggle()
+        })
+    })
+</script>
 </body>
 
 </html>
